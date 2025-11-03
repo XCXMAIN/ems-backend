@@ -1,9 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
-import emsRouter from "./routes/ems.js"; // 라우터 파일 있을 경우
+import { WebSocketServer } from "ws";
 
 dotenv.config();
 
@@ -11,20 +9,37 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ✅ 1️⃣ API 라우트는 항상 맨 위에 있어야 함
-app.use("/api/v1/ems", emsRouter);
+// ----------------------------
+// ✅ WebSocket 서버 생성
+// ----------------------------
+const wss = new WebSocketServer({ noServer: true });
 
-// ✅ 2️⃣ 프론트 정적 파일 서빙은 맨 마지막에
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// 클라이언트 연결 이벤트
+wss.on("connection", (ws) => {
+  console.log("🔌 WebSocket client connected");
 
-app.use(express.static(path.join(__dirname, "frontend/build")));
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "frontend/build", "index.html"));
+  ws.on("message", (msg) => {
+    console.log("📩 Received:", msg.toString());
+  });
+
+  ws.on("close", () => console.log("❌ Client disconnected"));
 });
 
-// ✅ 3️⃣ 서버 실행
+// ----------------------------
+// ✅ API 라우트 연결
+// ----------------------------
+import emsRouter from "./routes/ems.js";
+app.use("/api/v1/ems", emsRouter);
+
+// ----------------------------
+// ✅ 서버 실행
+// ----------------------------
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`🚀 EMS Mock Server running on port ${PORT}`);
 });
+
+// ----------------------------
+// ✅ export (여기가 핵심!!!)
+// ----------------------------
+export { wss };
