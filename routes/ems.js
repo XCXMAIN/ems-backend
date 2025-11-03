@@ -1,76 +1,54 @@
 import express from "express";
-import { wss } from "../server.js";
 
 const router = express.Router();
-let latestData = {};
 
-// 📘 데이터 파싱 함수 (요약형 구조)
-function parseInverterData(raw) {
-  return {
-    timestamp: raw.ts,
-    site: {
-      id: raw.site?.id || "unknown",
-      name: raw.site?.name || "N/A"
-    },
-    device: {
-      model: raw.device?.model || "unknown",
-      mode: raw.mode?.name || "unknown",
-      load_on: raw.status?.flags?.load_on ?? false
-    },
-    battery: {
-      soc: raw.dc?.soc_pct ?? null,
-      voltage_v: raw.dc?.battery_v ?? null,
-      charge_a: raw.dc?.chg_a ?? null,
-      discharge_a: raw.dc?.dischg_a ?? null,
-      temperature_c: raw.dc?.temp_c ?? null
-    },
-    pv: {
-      power_w: raw.pv?.pv_w ?? null,
-      voltage_v: raw.pv?.pv_v ?? null,
-      current_a: raw.pv?.pv_a ?? null
-    },
-    ac: {
-      grid_v: raw.ac?.grid_v ?? null,
-      out_v: raw.ac?.out_v ?? null,
-      load_pct: raw.ac?.load_pct ?? null
-    },
-    energy: {
-      pv_wh_total: raw.energy?.pv_wh_total ?? null,
-      load_wh_total: raw.energy?.load_wh_total ?? null
-    }
-  };
-}
+// ✅ 최근 EMS 데이터 저장용 변수
+let latestEMSData = null;
 
-// 📥 게이트웨이 or 시뮬레이터 → EMS 서버로 데이터 수신
+/**
+ * @route POST /api/v1/ems
+ * @desc  EMS에서 서버로 데이터 수신 (JSON)
+ * @access Public
+ */
 router.post("/", (req, res) => {
-  const raw = req.body;
-  const parsed = parseInverterData(raw);
+  try {
+    const data = req.body;
 
-  latestData = parsed;
+    // 필수 필드 검증
+    if (!data.ts || !data.site || !data.dc || !data.pv) {
+      return res.status(400).json({ error: "Invalid EMS data format" });
+    }
 
-  console.log("\n📩 [EMS Data Received]");
-  console.table({
-    timestamp: parsed.timestamp,
-    site: parsed.site.id,
-    soc: parsed.battery.soc,
-    pv_power: parsed.pv.power_w,
-    temp: parsed.battery.temperature_c,
-    mode: parsed.device.mode
-  });
+    // 요약 데이터 정리
+    latestEMSData = {
+      timestamp: data.ts,
+      site: data.site.id,
+      soc: data.dc.soc_pct,
+      pv_power: data.pv.pv_w,
+      temp: data.dc.temp_c,
+      mode: data.mode.name,
+    };
 
-  // ✅ 프론트에 WebSocket으로 실시간 데이터 송신
-  wss.clients.forEach((client) => {
-    if (client.readyState === 1) client.send(JSON.stringify(parsed));
-  });
+    console.log("📩 [EMS Data Received & Parsed]");
+    console.table(latestEMSData);
 
-  res.json({ success: true });
+    return res.status(200).json({ message: "EMS data received successfully" });
+  } catch (err) {
+    console.error("❌ Error processing EMS data:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
-// 📤 프론트에서 최신 데이터 조회용 API
+/**
+ * @route GET /api/v1/ems/latest
+ * @desc  최신 EMS 데이터 조회
+ * @access Public
+ */
 router.get("/latest", (req, res) => {
-  if (!latestData.timestamp)
-    return res.status(404).json({ message: "No EMS data received yet" });
-  res.json(latestData);
+  if (!latestEMSData) {
+    return res.status(200).json({ message: "No EMS data received yet" });
+  }
+  return res.status(200).json(latestEMSData);
 });
 
 export default router;
