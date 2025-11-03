@@ -1,0 +1,72 @@
+{
+  "schema": "inverter.telemetry.v1",
+  "ts": "2025-10-29T10:03:45+09:00",
+  "device": {
+    "vendor": "Voltronic",
+    "model": "Axpert VM III",
+    "serial": "xxxxxxxxxxxxxx",
+    "fw_main": "00123.01",
+    "fw_scc": null
+  },
+  "site": {
+    "id": "site-001",
+    "name": "Main ESS Room"
+  },
+  "ac": {
+    "grid_v": 227.9,
+    "grid_hz": 52.7,
+    "out_v": 232.3,
+    "out_hz": 50.4,
+    "out_va": 126,
+    "out_w": 111,
+    "load_pct": 5
+  },
+  "dc": {
+    "bus_v": 383,
+    "battery_v": 49.3,
+    "chg_a": 1.5,
+    "dischg_a": 0,
+    "soc_pct": 81,
+    "temp_c": 43
+  },
+  "pv": {
+    "pv_a": 1.2,
+    "pv_v": 121.0,
+    "pv_w": 1321
+  },
+  "mode": {
+    "raw": "L",
+    "name": "Line"
+  },
+  "status": {
+    "flags": {
+      "load_on": true,
+      "ac_chg_on": false,
+      "scc_chg_on": true
+    },
+    "warnings": [],
+    "faults": []
+  },
+  "rating": {
+    "ac_out_v_nom": 230.0,
+    "ac_out_hz_nom": 50.0,
+    "ac_out_va_nom": 5000,
+    "ac_out_w_nom": 4000,
+    "bat_v_nom": 48.0
+  },
+  "energy": {
+    "pv_wh_total": 12345678,
+    "load_wh_total": 9876543,
+    "pv_wh_y": 0,
+    "load_wh_y": 0,
+    "pv_wh_m": 0,
+    "load_wh_m": 0,
+    "pv_wh_d": 0,
+    "load_wh_d": 0
+  },
+  "raw": {
+    "qpigs": "(...)",
+    "qpiws_bits": "000...0",
+    "flags_b0_10": "10101000"
+  }
+}
