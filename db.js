@@ -2,15 +2,27 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-// Supabase 클라이언트 불러오기 (ESM 방식)
-import { createClient } from '@supabase/supabase-js';
+// PostgreSQL 클라이언트 불러오기
+import pg from 'pg';
+const { Pool } = pg;
 
-// .env 파일에서 URL과 Key 값을 읽어옴
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
+// PostgreSQL 연결 풀 생성
+const pool = new Pool({
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  database: process.env.DB_DATABASE,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+});
 
-// Supabase 클라이언트 생성
-const supabase = createClient(supabaseUrl, supabaseKey);
+// 연결 테스트
+pool.on('connect', () => {
+  console.log('✅ PostgreSQL connected');
+});
+
+pool.on('error', (err) => {
+  console.error('❌ PostgreSQL connection error:', err);
+});
 
 // export (ESM 방식)
-export default supabase;
+export default pool;
