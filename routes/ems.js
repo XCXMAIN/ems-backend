@@ -3,6 +3,7 @@ import express from "express";
 const router = express.Router();
 
 // ✅ 최근 EMS 데이터 저장용 변수
+// (A파트가 WebSocket 브로드캐스트 등에 사용할 수 있으므로 유지합니다)
 let latestEMSData = null;
 
 /**
@@ -32,6 +33,9 @@ router.post("/", (req, res) => {
     console.log("📩 [EMS Data Received & Parsed]");
     console.table(latestEMSData);
 
+    // (TODO: A파트(저)가 여기에 Supabase DB INSERT 로직을 추가해야 합니다.)
+    // (B파트님의 /latest API가 데이터를 조회하려면 제가 이 작업을 해야 합니다.)
+
     return res.status(200).json({ message: "EMS data received successfully" });
   } catch (err) {
     console.error("❌ Error processing EMS data:", err);
@@ -39,16 +43,7 @@ router.post("/", (req, res) => {
   }
 });
 
-/**
- * @route GET /api/v1/ems/latest
- * @desc  최신 EMS 데이터 조회
- * @access Public
- */
-router.get("/latest", (req, res) => {
-  if (!latestEMSData) {
-    return res.status(200).json({ message: "No EMS data received yet" });
-  }
-  return res.status(200).json(latestEMSData);
-});
+// --- B파트님의 api_b.js와 충돌하는 /latest API를 여기서 삭제했습니다 ---
+// (GET /latest 및 GET /history는 api_b.js 파일이 모두 담당합니다)
 
 export default router;
