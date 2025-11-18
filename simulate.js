@@ -15,7 +15,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // 🚀 EMS 서버 주소 (Render or Local)
-const EMS_SERVER = "https://ems-backend.onrender.com/api/v1/ems";
+const EMS_SERVER = "https://ems-backend-e79r.onrender.com/api/v1/ems";
 // 👉 로컬 테스트 시: const EMS_SERVER = "http://localhost:8080/api/v1/ems";
 
 

@@ -1,54 +1,70 @@
 import express from "express";
+import { wss } from "../server.js";
 
 const router = express.Router();
 
-// ✅ 최근 EMS 데이터 저장용 변수
+// 🟢 최신 EMS 요약 데이터 저장
 let latestEMSData = null;
 
 /**
- * @route POST /api/v1/ems
- * @desc  EMS에서 서버로 데이터 수신 (JSON)
- * @access Public
+ * 📌 POST /api/v1/ems
+ * EMS 단말 → 서버로 원본 데이터 전송
  */
 router.post("/", (req, res) => {
-  try {
-    const data = req.body;
+  const data = req.body;
 
-    // 필수 필드 검증
-    if (!data.ts || !data.site || !data.dc || !data.pv) {
-      return res.status(400).json({ error: "Invalid EMS data format" });
+  console.log("📩 [RAW EMS DATA RECEIVED]");
+  console.log(JSON.stringify(data, null, 2));
+
+  // 🟥 실제 EMS 인버터 데이터 구조 처리
+  const metrics = data.metrics;
+
+  const parsed = {
+    timestamp: new Date().toISOString(),
+    site: "site-001",
+
+    soc: metrics.batt_capacity_percent,
+    pv_power: metrics.pv_input_voltage * metrics.pv_input_current,
+
+    battery_voltage: metrics.batt_voltage,
+    battery_temp: metrics.heatsink_temp,
+
+    charge_current: metrics.batt_charge_current,
+    discharge_current: metrics.batt_discharge_current,
+
+    ac_output_w: metrics.ac_out_watt,
+    load_percent: metrics.load_percent,
+
+    grid_voltage: metrics.grid_voltage,
+
+    mode: data.type
+  };
+
+  console.log("\n🟢 [EMS Parsed Data]");
+  console.table(parsed);
+
+  latestEMSData = parsed;
+
+  // 🟢 WebSocket 실시간 브로드캐스트
+  wss.clients.forEach((client) => {
+    if (client.readyState === 1) {
+      client.send(JSON.stringify(parsed));
     }
+  });
 
-    // 요약 데이터 정리
-    latestEMSData = {
-      timestamp: data.ts,
-      site: data.site.id,
-      soc: data.dc.soc_pct,
-      pv_power: data.pv.pv_w,
-      temp: data.dc.temp_c,
-      mode: data.mode.name,
-    };
-
-    console.log("📩 [EMS Data Received & Parsed]");
-    console.table(latestEMSData);
-
-    return res.status(200).json({ message: "EMS data received successfully" });
-  } catch (err) {
-    console.error("❌ Error processing EMS data:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
+  res.json({ status: "ok" });
 });
 
 /**
- * @route GET /api/v1/ems/latest
- * @desc  최신 EMS 데이터 조회
- * @access Public
+ * 📌 GET /api/v1/ems/latest
+ * 프론트 → 최신 EMS 요약 데이터 조회
  */
 router.get("/latest", (req, res) => {
   if (!latestEMSData) {
-    return res.status(200).json({ message: "No EMS data received yet" });
+    return res.json({ message: "No EMS data received yet" });
   }
-  return res.status(200).json(latestEMSData);
+
+  res.json(latestEMSData);
 });
 
 export default router;
