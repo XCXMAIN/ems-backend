@@ -11,9 +11,9 @@ import fetch from "node-fetch";
 // -------------------------------
 // Render EMS 서버 주소
 // -------------------------------
-// const EMS_SERVER = "https://ems-backend-e79r.onrender.com/api/v1/ems";
+const EMS_SERVER = "https://ems-backend-e79r.onrender.com/api/v1/ems";
 // 👉 로컬 테스트 시:
-const EMS_SERVER = "http://localhost:8080/api/v1/ems";
+// const EMS_SERVER = "http://localhost:8080/api/v1/ems";
 
 // -------------------------------
 // 랜덤값 생성 함수

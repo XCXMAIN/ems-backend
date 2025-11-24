@@ -62,40 +62,47 @@ router.post("/", async (req, res) => {
     });
 
     // 5. (✅ B파트 추가) PostgreSQL DB에 저장 (히스토리용)
-    // ems_readings 테이블 구조에 맞춰 원본 데이터 저장
-    const query = `
-      INSERT INTO ems_readings (
-        timestamp, ts_ms, type, crc_ok,
-        grid_voltage, grid_freq, ac_out_voltage, ac_out_freq,
-        ac_out_va, ac_out_watt, load_percent,
-        bus_voltage, batt_voltage, batt_charge_current, batt_discharge_current,
-        batt_capacity_percent, heatsink_temp,
-        pv_input_current, pv_input_voltage,
-        device_status_bits, raw_json
-      ) VALUES (
-        NOW(), $1, $2, $3,
-        $4, $5, $6, $7,
-        $8, $9, $10,
-        $11, $12, $13, $14,
-        $15, $16,
-        $17, $18,
-        $19, $20
-      )
-    `;
+    // DB가 설정되어 있으면 저장, 없으면 스킵
+    if (process.env.DATABASE_URL || process.env.DB_HOST) {
+      try {
+        const query = `
+          INSERT INTO ems_readings (
+            timestamp, ts_ms, type, crc_ok,
+            grid_voltage, grid_freq, ac_out_voltage, ac_out_freq,
+            ac_out_va, ac_out_watt, load_percent,
+            bus_voltage, batt_voltage, batt_charge_current, batt_discharge_current,
+            batt_capacity_percent, heatsink_temp,
+            pv_input_current, pv_input_voltage,
+            device_status_bits, raw_json
+          ) VALUES (
+            NOW(), $1, $2, $3,
+            $4, $5, $6, $7,
+            $8, $9, $10,
+            $11, $12, $13, $14,
+            $15, $16,
+            $17, $18,
+            $19, $20
+          )
+        `;
 
-    const values = [
-      data.ts_ms, data.type, data.crc_ok,
-      metrics.grid_voltage, metrics.grid_freq, metrics.ac_out_voltage, metrics.ac_out_freq,
-      metrics.ac_out_va, metrics.ac_out_watt, metrics.load_percent,
-      metrics.bus_voltage, metrics.batt_voltage, metrics.batt_charge_current, metrics.batt_discharge_current,
-      metrics.batt_capacity_percent, metrics.heatsink_temp,
-      metrics.pv_input_current, metrics.pv_input_voltage,
-      metrics.device_status_bits, JSON.stringify(data)
-    ];
+        const values = [
+          data.ts_ms, data.type, data.crc_ok,
+          metrics.grid_voltage, metrics.grid_freq, metrics.ac_out_voltage, metrics.ac_out_freq,
+          metrics.ac_out_va, metrics.ac_out_watt, metrics.load_percent,
+          metrics.bus_voltage, metrics.batt_voltage, metrics.batt_charge_current, metrics.batt_discharge_current,
+          metrics.batt_capacity_percent, metrics.heatsink_temp,
+          metrics.pv_input_current, metrics.pv_input_voltage,
+          metrics.device_status_bits, JSON.stringify(data)
+        ];
 
-    // DB 저장은 비동기로 처리 (await를 써서 확실히 저장 확인)
-    await pool.query(query, values);
-    console.log("✅ [DB] Saved to PostgreSQL");
+        await pool.query(query, values);
+        console.log("✅ [DB] Saved to PostgreSQL");
+      } catch (dbError) {
+        console.warn("⚠️  [DB] Save failed (DB not configured):", dbError.message);
+      }
+    } else {
+      console.log("ℹ️  [DB] Skipped (no DATABASE_URL configured)");
+    }
 
     res.json({ status: "ok", message: "Received & Saved" });
 
