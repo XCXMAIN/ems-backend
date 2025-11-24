@@ -7,13 +7,23 @@ import pg from 'pg';
 const { Pool } = pg;
 
 // PostgreSQL 연결 풀 생성
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  database: process.env.DB_DATABASE,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-});
+// Render에서는 DATABASE_URL 환경변수 사용, 로컬에서는 개별 설정 사용
+const pool = new Pool(
+  process.env.DATABASE_URL
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl: {
+          rejectUnauthorized: false // Render PostgreSQL SSL 연결
+        }
+      }
+    : {
+        host: process.env.DB_HOST,
+        port: process.env.DB_PORT,
+        database: process.env.DB_DATABASE,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+      }
+);
 
 // 연결 테스트
 pool.on('connect', () => {

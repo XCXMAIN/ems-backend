@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { WebSocketServer } from "ws";
 import emsRouter from "./routes/ems.js";
+import dataRouter from "./routes/api_b.js";
 
 dotenv.config();
 const app = express();
@@ -20,8 +21,11 @@ wss.on("connection", (ws) => {
   ws.on("close", () => console.log("❌ WebSocket: Client disconnected"));
 });
 
-// 🟢 정상적인 EMS API 라우터 연결
+// 🟢 EMS 데이터 수신 API (POST)
 app.use("/api/v1/ems", emsRouter);
+
+// 🟢 프론트엔드 대시보드용 데이터 조회 API (GET)
+app.use("/api/v1/data", dataRouter);
 
 const PORT = process.env.PORT || 8080;
 
