@@ -1,106 +1,61 @@
 /**
- * EMS 데이터 시뮬레이터 (백엔드 테스트용)
+ * EMS Data Simulator (REAL METRICS FORMAT)
  * ------------------------------------------
- * - 5초마다 가짜 인버터 데이터를 생성해서 EMS 서버로 전송
- * - 실제 ESS 게이트웨이 통신과 동일한 JSON 구조 사용
- * - 로컬/Render 서버 둘 다 호환 가능
+ * - 백엔드가 기대하는 실제 EMS 인버터 데이터 구조에 맞춰 전송
+ * - metrics 구조 기반 (담당자가 준 JSON 구조 그대로)
+ * - 5초마다 서버로 실시간 데이터 push
  */
 
 import fetch from "node-fetch";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// 🚀 EMS 서버 주소 (Render or Local)
+// -------------------------------
+// Render EMS 서버 주소
+// -------------------------------
 const EMS_SERVER = "https://ems-backend-e79r.onrender.com/api/v1/ems";
-// 👉 로컬 테스트 시: const EMS_SERVER = "http://localhost:8080/api/v1/ems";
 
-
-// 📂 mock 데이터 폴더 경로 (선택)
-const MOCK_DIR = path.join(__dirname, "mock");
-
-// 🔧 랜덤 float 생성 함수
+// -------------------------------
+// 랜덤값 생성 함수
+// -------------------------------
 function rand(min, max, decimal = 1) {
   return parseFloat((Math.random() * (max - min) + min).toFixed(decimal));
 }
 
-// ⚡️ EMS 데이터 생성 함수
-function generateMockData() {
+// -------------------------------
+// 실제 EMS 장비의 metrics 기반 Mock 데이터 생성
+// -------------------------------
+function generateMetricData() {
   return {
-    schema: "inverter.telemetry.v1",
-    ts: new Date().toISOString(),
-    device: {
-      vendor: "Voltronic",
-      model: "Axpert VM III",
-      serial: "SN1234567890",
-      fw_main: "00123.01",
-      fw_scc: "00045.12"
+    type: "QPIGS",
+    ts_ms: Date.now(),
+    crc_ok: true,
+    metrics: {
+      grid_voltage: rand(220, 240),
+      grid_freq: rand(49, 51),
+      ac_out_voltage: rand(220, 240),
+      ac_out_freq: rand(49, 51),
+      ac_out_va: rand(100, 500),
+      ac_out_watt: rand(80, 300),
+      load_percent: rand(5, 25),
+      bus_voltage: rand(330, 400),
+      batt_voltage: rand(47, 52),
+      batt_charge_current: rand(0, 8),
+      batt_capacity_percent: rand(60, 100, 0), // SOC
+      heatsink_temp: rand(30, 45),
+      pv_input_current: rand(0, 5),
+      pv_input_voltage: rand(100, 130),
+      scc_batt_voltage: rand(48, 52),
+      batt_discharge_current: rand(0, 6),
+      device_status_bits: 16
     },
-    site: {
-      id: "site-001",
-      name: "Main ESS Room"
-    },
-    ac: {
-      grid_v: rand(220, 240),
-      grid_hz: rand(49, 51, 1),
-      out_v: rand(220, 240),
-      out_hz: rand(49, 51, 1),
-      out_va: rand(100, 300),
-      out_w: rand(100, 250),
-      load_pct: rand(5, 20, 1)
-    },
-    dc: {
-      bus_v: rand(360, 400, 1),
-      battery_v: rand(48, 52, 1),
-      chg_a: rand(0, 5, 1),
-      dischg_a: rand(0, 3, 1),
-      soc_pct: rand(70, 100, 0),
-      temp_c: rand(30, 45, 1)
-    },
-    pv: {
-      pv_a: rand(2, 4, 2),
-      pv_v: rand(110, 130, 1),
-      pv_w: rand(1000, 1400, 0)
-    },
-    mode: {
-      raw: "L",
-      name: "Line"
-    },
-    status: {
-      flags: {
-        load_on: true,
-        ac_chg_on: false,
-        scc_chg_on: true
-      },
-      warnings: [],
-      faults: []
-    },
-    rating: {
-      ac_out_v_nom: 230,
-      ac_out_hz_nom: 50,
-      ac_out_va_nom: 5000,
-      ac_out_w_nom: 4000,
-      bat_v_nom: 48
-    },
-    energy: {
-      pv_wh_total: 12345678 + Math.floor(Math.random() * 1000),
-      load_wh_total: 9876543 + Math.floor(Math.random() * 500),
-      pv_wh_y: 0,
-      load_wh_y: 0,
-      pv_wh_m: 0,
-      load_wh_m: 0,
-      pv_wh_d: 0,
-      load_wh_d: 0
-    }
+    extras: ["00", "00", "00000", "011", "0", "00", "0000"]
   };
 }
 
-// 📤 EMS 서버로 전송
+// -------------------------------
+// 서버 전송 함수
+// -------------------------------
 async function sendMockData() {
-  const data = generateMockData();
+  const data = generateMetricData();
 
   try {
     const res = await fetch(EMS_SERVER, {
@@ -110,15 +65,17 @@ async function sendMockData() {
     });
 
     if (res.ok) {
-      console.log(`🚀 Sent mock data at ${data.ts}`);
+      console.log(`🚀 Sent EMS mock data @ ${new Date().toISOString()}`);
     } else {
-      console.error(`❌ Server error: ${res.status}`);
+      console.error(`❌ Server returned ${res.status}`);
     }
   } catch (err) {
-    console.error("❌ Failed to send mock data:", err.message);
+    console.error("❌ Failed:", err.message);
   }
 }
 
-// ♻️ 5초마다 자동 전송
-console.log("🌞 EMS Data Simulator started...");
+// -------------------------------
+// 실행
+// -------------------------------
+console.log("🌞 EMS Real-Format Data Simulator Started...");
 setInterval(sendMockData, 5000);
