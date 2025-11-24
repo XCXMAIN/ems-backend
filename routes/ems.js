@@ -63,7 +63,7 @@ router.post("/", async (req, res) => {
 
     // 5. (✅ B파트 추가) PostgreSQL DB에 저장 (히스토리용)
     // DB가 설정되어 있으면 저장, 없으면 스킵
-    if (process.env.DATABASE_URL || process.env.DB_HOST) {
+    if (pool) {
       try {
         const query = `
           INSERT INTO ems_readings (
