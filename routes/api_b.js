@@ -9,6 +9,13 @@ const router = express.Router();
  */
 router.get('/latest', async (req, res) => {
     try {
+        if (!pool) {
+            return res.status(503).json({ 
+                error: 'Database not configured',
+                message: 'Use /api/v1/device/latest for memory cache or configure DATABASE_URL'
+            });
+        }
+
         const query = `
             SELECT 
                 id,
@@ -58,6 +65,13 @@ router.get('/latest', async (req, res) => {
  */
 router.get('/history', async (req, res) => {
     try {
+        if (!pool) {
+            return res.status(503).json({ 
+                error: 'Database not configured',
+                message: 'History requires PostgreSQL. Configure DATABASE_URL'
+            });
+        }
+
         const { start, end, limit = 1000 } = req.query;
 
         if (!start || !end) {
@@ -109,6 +123,13 @@ router.get('/history', async (req, res) => {
  */
 router.get('/stats', async (req, res) => {
     try {
+        if (!pool) {
+            return res.status(503).json({ 
+                error: 'Database not configured',
+                message: 'Stats requires PostgreSQL. Configure DATABASE_URL'
+            });
+        }
+
         const { limit = 100 } = req.query;
 
         const query = `
@@ -146,6 +167,13 @@ router.get('/stats', async (req, res) => {
  */
 router.get('/recent', async (req, res) => {
     try {
+        if (!pool) {
+            return res.status(503).json({ 
+                error: 'Database not configured',
+                message: 'Recent data requires PostgreSQL. Configure DATABASE_URL'
+            });
+        }
+
         const { limit = 50 } = req.query;
 
         const query = `
