@@ -8,10 +8,10 @@ const router = express.Router();
 let latestEMSData = null;
 
 /**
- * 📌 POST /api/v1/ems
- * EMS 단말 → 서버로 원본 데이터 전송 & DB 저장 & 브로드캐스트
+ * 📌 POST /api/v1/device/ems
+ * 인버터 → 서버로 원본 데이터 전송 & DB 저장 & 브로드캐스트
  */
-router.post("/", async (req, res) => {
+router.post("/ems", async (req, res) => {
   try {
     const data = req.body;
 
@@ -113,9 +113,10 @@ router.post("/", async (req, res) => {
 });
 
 /**
- * 📌 GET /api/v1/ems/latest
+ * 📌 GET /api/v1/device/latest
  * (메모리 캐시 버전 - 아주 빠름)
- * B님이 만든 api_b.js는 DB에서 읽고, 이건 메모리에서 읽습니다. 둘 다 있어도 괜찮습니다.
+ * 프론트엔드는 /api/v1/dashboard/latest를 사용하세요.
+ * 이건 디바이스 측 확인용입니다.
  */
 router.get("/latest", (req, res) => {
   if (!latestEMSData) {

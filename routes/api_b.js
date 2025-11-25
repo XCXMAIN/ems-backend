@@ -4,7 +4,7 @@ import pool from '../db.js'; // PostgreSQL 연결
 const router = express.Router();
 
 /**
- * 📌 GET /api/v1/data/latest
+ * 📌 GET /api/v1/dashboard/latest
  * DB에서 가장 최근 데이터 1개 조회 (대시보드용)
  */
 router.get('/latest', async (req, res) => {
@@ -51,10 +51,10 @@ router.get('/latest', async (req, res) => {
 });
 
 /**
- * 📌 GET /api/v1/data/history
+ * 📌 GET /api/v1/dashboard/history
  * 시간 범위별 히스토리 데이터 조회
  * 쿼리 파라미터: start, end (ISO 8601 형식), limit (선택)
- * 예: /api/v1/data/history?start=2025-11-24T00:00:00Z&end=2025-11-24T23:59:59Z&limit=100
+ * 예: /api/v1/dashboard/history?start=2025-11-24T00:00:00Z&end=2025-11-24T23:59:59Z&limit=100
  */
 router.get('/history', async (req, res) => {
     try {
@@ -103,7 +103,7 @@ router.get('/history', async (req, res) => {
 });
 
 /**
- * 📌 GET /api/v1/data/stats
+ * 📌 GET /api/v1/dashboard/stats
  * 통계 데이터 조회 (최근 N개 데이터의 평균, 최대, 최소)
  * 쿼리 파라미터: limit (기본값: 100)
  */
@@ -140,7 +140,7 @@ router.get('/stats', async (req, res) => {
 });
 
 /**
- * 📌 GET /api/v1/data/recent
+ * 📌 GET /api/v1/dashboard/recent
  * 최근 N개의 데이터 조회 (그래프용)
  * 쿼리 파라미터: limit (기본값: 50)
  */

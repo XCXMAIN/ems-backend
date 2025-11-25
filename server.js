@@ -21,11 +21,11 @@ wss.on("connection", (ws) => {
   ws.on("close", () => console.log("❌ WebSocket: Client disconnected"));
 });
 
-// 🟢 EMS 데이터 수신 API (POST)
-app.use("/api/v1/ems", emsRouter);
+// 🟢 인버터 → 서버: 데이터 수신 API
+app.use("/api/v1/device", emsRouter);
 
-// 🟢 프론트엔드 대시보드용 데이터 조회 API (GET)
-app.use("/api/v1/data", dataRouter);
+// 🟢 프론트엔드 ← 서버: 대시보드 데이터 조회 API
+app.use("/api/v1/dashboard", dataRouter);
 
 const PORT = process.env.PORT || 8080;
 
