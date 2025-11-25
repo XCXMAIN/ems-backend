@@ -7,19 +7,37 @@
 - **상태**: ✅ 정상 가동 중
 - **테스트**: ✅ 데이터 수신 확인됨
 
-### 2. 데이터 수신 API
+### 2. 🔴 데이터 수신 API (인버터 → 서버)
 ```
-POST https://ems-backend-e79r.onrender.com/api/v1/ems
+POST https://ems-backend-e79r.onrender.com/api/v1/device/ems
 Content-Type: application/json
 ```
 
 **사측에서 이 주소로 데이터를 전송하면 됩니다!**
 
-### 3. 데이터 확인 API
+### 3. 🔵 프론트엔드 조회 API (프론트 ← 서버)
 ```
-GET https://ems-backend-e79r.onrender.com/api/v1/ems/latest
+# 최신 데이터 (DB 기반)
+GET https://ems-backend-e79r.onrender.com/api/v1/dashboard/latest
+
+# 히스토리 조회 (시간 범위)
+GET https://ems-backend-e79r.onrender.com/api/v1/dashboard/history?start=2025-11-24T00:00:00Z&end=2025-11-24T23:59:59Z
+
+# 최근 N개 데이터 (그래프용)
+GET https://ems-backend-e79r.onrender.com/api/v1/dashboard/recent?limit=50
+
+# 통계 데이터
+GET https://ems-backend-e79r.onrender.com/api/v1/dashboard/stats?limit=100
+
+# 디바이스 확인용 (메모리 캐시)
+GET https://ems-backend-e79r.onrender.com/api/v1/device/latest
 ```
-브라우저에서 바로 확인 가능합니다.
+
+### 4. 🌐 WebSocket 실시간 스트림
+```
+wss://ems-backend-e79r.onrender.com/
+```
+5초마다 자동으로 최신 데이터가 푸시됩니다.
 
 ---
 
@@ -27,7 +45,7 @@ GET https://ems-backend-e79r.onrender.com/api/v1/ems/latest
 
 ### 요청 형식
 ```json
-POST https://ems-backend-e79r.onrender.com/api/v1/ems
+POST https://ems-backend-e79r.onrender.com/api/v1/device/ems
 Content-Type: application/json
 
 {
@@ -57,7 +75,7 @@ Content-Type: application/json
 
 ### curl 테스트 명령어 (사측에서 테스트 가능)
 ```bash
-curl -X POST https://ems-backend-e79r.onrender.com/api/v1/ems \
+curl -X POST https://ems-backend-e79r.onrender.com/api/v1/device/ems \
   -H "Content-Type: application/json" \
   -d '{"type":"QPIGS","ts_ms":1732435200000,"crc_ok":true,"metrics":{"grid_voltage":220.5,"batt_capacity_percent":85,"ac_out_watt":182.3}}'
 ```
