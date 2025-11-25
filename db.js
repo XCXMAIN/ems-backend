@@ -10,36 +10,36 @@ const { Pool } = pg;
 let pool = null;
 
 if (process.env.DATABASE_URL) {
-  // Render 등 클라우드 환경
-  pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: {
-      rejectUnauthorized: false
-    }
-  });
-  pool.on('connect', () => {
-    console.log('✅ PostgreSQL connected (Render)');
-  });
+  // Render 등 클라우드 환경 (명시적으로 설정된 경우만)
+  try {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: {
+        rejectUnauthorized: false
+      }
+    });
+    console.log('✅ PostgreSQL pool created (Cloud mode)');
+  } catch (err) {
+    console.error('❌ PostgreSQL pool creation failed:', err.message);
+    pool = null;
+  }
 } else if (process.env.DB_HOST && process.env.DB_DATABASE) {
   // 로컬 환경
-  pool = new Pool({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    database: process.env.DB_DATABASE,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-  });
-  pool.on('connect', () => {
-    console.log('✅ PostgreSQL connected (Local)');
-  });
+  try {
+    pool = new Pool({
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT,
+      database: process.env.DB_DATABASE,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+    });
+    console.log('✅ PostgreSQL pool created (Local mode)');
+  } catch (err) {
+    console.error('❌ PostgreSQL pool creation failed:', err.message);
+    pool = null;
+  }
 } else {
   console.log('ℹ️  PostgreSQL not configured (memory-only mode)');
-}
-
-if (pool) {
-  pool.on('error', (err) => {
-    console.error('❌ PostgreSQL connection error:', err.message);
-  });
 }
 
 // export (ESM 방식)
