@@ -1,128 +1,127 @@
 import express from "express";
 import { wss } from "../server.js"; // WebSocket
-import pool from "../db.js";       // ✅ DB 연결 추가 (B파트)
+import pool from "../db.js";       // DB 연결
 
 const router = express.Router();
 
-// 🟢 최신 EMS 요약 데이터 저장 (메모리 캐시)
-let latestEMSData = null;
+// 🟢 최신 인버터 데이터 저장 (메모리 캐시)
+let latestInverterData = null;
 
 /**
- * 📌 POST /api/v1/device/ems
- * 인버터 → 서버로 원본 데이터 전송 & DB 저장 & 브로드캐스트
+ * 📌 POST /api/inverter/data
+ * ESP32 게이트웨이 → 서버로 인버터 데이터 전송
+ * 
+ * 예상 데이터 형식 (스프레드시트 확인 후 조정):
+ * { "voltage": 400.0, "current": 12.5, ... }
  */
-router.post("/ems", async (req, res) => {
+router.post("/data", async (req, res) => {
   try {
     const data = req.body;
 
-    console.log("📩 [RAW EMS DATA RECEIVED]");
-    // console.log(JSON.stringify(data, null, 2)); // 로그 너무 길면 주석 처리
+    console.log("📩 [INVERTER DATA RECEIVED]");
+    console.log(JSON.stringify(data, null, 2));
 
-    // 1. 데이터 검증
-    if (!data.metrics) {
-        return res.status(400).json({ error: "metrics missing" });
-    }
-
-    // 🟥 실제 EMS 인버터 데이터 구조 처리
-    const metrics = data.metrics;
-
-    // 2. (A파트) 프론트엔드 전송용 요약 데이터 생성
+    // 1. 데이터 파싱 (ESP32에서 보내는 형식)
+    // TODO: 스프레드시트 확인 후 필드명 조정 필요
     const parsed = {
       timestamp: new Date().toISOString(),
-      site: "site-001", // 나중에 data.site_id가 오면 교체
-
-      soc: metrics.batt_capacity_percent,
-      pv_power: Math.round((metrics.pv_input_voltage || 0) * (metrics.pv_input_current || 0)), // 계산
-
-      battery_voltage: metrics.batt_voltage,
-      battery_temp: metrics.heatsink_temp,
-
-      charge_current: metrics.batt_charge_current,
-      discharge_current: metrics.batt_discharge_current,
-
-      ac_output_w: metrics.ac_out_watt,
-      load_percent: metrics.load_percent,
-
-      grid_voltage: metrics.grid_voltage,
-
-      mode: data.type // 혹은 "Normal"
+      site: data.site_id || "site-001",
+      
+      // 기본 전력 데이터
+      voltage: data.voltage,
+      current: data.current,
+      power: data.power || (data.voltage && data.current ? data.voltage * data.current : null),
+      
+      // 배터리 데이터
+      soc: data.soc,
+      battery_voltage: data.battery_voltage,
+      battery_temp: data.battery_temp,
+      charge_current: data.charge_current,
+      discharge_current: data.discharge_current,
+      
+      // PV 데이터
+      pv_voltage: data.pv_voltage,
+      pv_current: data.pv_current,
+      pv_power: data.pv_power || (data.pv_voltage && data.pv_current ? data.pv_voltage * data.pv_current : null),
+      
+      // 그리드/출력 데이터
+      grid_voltage: data.grid_voltage,
+      grid_freq: data.grid_freq,
+      ac_output_w: data.ac_output_w,
+      load_percent: data.load_percent,
+      
+      // 원본 데이터 보존
+      raw: data
     };
 
-    console.log("\n🟢 [EMS Parsed Data]");
+    console.log("\n🟢 [Parsed Inverter Data]");
     console.table(parsed);
 
-    // 3. (A파트) 메모리에 최신 값 저장
-    latestEMSData = parsed;
+    // 2. 메모리에 최신 값 저장
+    latestInverterData = parsed;
 
-    // 4. (A파트) WebSocket 실시간 브로드캐스트 (프론트엔드 그래프용)
+    // 3. WebSocket 실시간 브로드캐스트 (프론트엔드용)
     wss.clients.forEach((client) => {
       if (client.readyState === 1) {
         client.send(JSON.stringify(parsed));
       }
     });
 
-    // 5. (✅ B파트 추가) PostgreSQL DB에 저장 (히스토리용)
-    // DB가 설정되어 있으면 저장, 없으면 스킵
+    // 4. DB 저장 (설정되어 있으면)
     if (pool) {
       try {
         const query = `
-          INSERT INTO ems_readings (
-            timestamp, ts_ms, type, crc_ok,
-            grid_voltage, grid_freq, ac_out_voltage, ac_out_freq,
-            ac_out_va, ac_out_watt, load_percent,
-            bus_voltage, batt_voltage, batt_charge_current, batt_discharge_current,
-            batt_capacity_percent, heatsink_temp,
-            pv_input_current, pv_input_voltage,
-            device_status_bits, raw_json
+          INSERT INTO inverter_data (
+            timestamp, site_id, voltage, current, power,
+            soc, battery_voltage, battery_temp,
+            pv_voltage, pv_current, pv_power,
+            grid_voltage, ac_output_w, load_percent,
+            raw_json
           ) VALUES (
-            NOW(), $1, $2, $3,
-            $4, $5, $6, $7,
+            NOW(), $1, $2, $3, $4,
+            $5, $6, $7,
             $8, $9, $10,
-            $11, $12, $13, $14,
-            $15, $16,
-            $17, $18,
-            $19, $20
+            $11, $12, $13,
+            $14
           )
         `;
 
         const values = [
-          data.ts_ms, data.type, data.crc_ok,
-          metrics.grid_voltage, metrics.grid_freq, metrics.ac_out_voltage, metrics.ac_out_freq,
-          metrics.ac_out_va, metrics.ac_out_watt, metrics.load_percent,
-          metrics.bus_voltage, metrics.batt_voltage, metrics.batt_charge_current, metrics.batt_discharge_current,
-          metrics.batt_capacity_percent, metrics.heatsink_temp,
-          metrics.pv_input_current, metrics.pv_input_voltage,
-          metrics.device_status_bits, JSON.stringify(data)
+          parsed.site,
+          parsed.voltage, parsed.current, parsed.power,
+          parsed.soc, parsed.battery_voltage, parsed.battery_temp,
+          parsed.pv_voltage, parsed.pv_current, parsed.pv_power,
+          parsed.grid_voltage, parsed.ac_output_w, parsed.load_percent,
+          JSON.stringify(data)
         ];
 
         await pool.query(query, values);
         console.log("✅ [DB] Saved to PostgreSQL");
       } catch (dbError) {
-        console.warn("⚠️  [DB] Save failed (DB not configured):", dbError.message);
+        console.warn("⚠️  [DB] Save failed:", dbError.message);
       }
     } else {
-      console.log("ℹ️  [DB] Skipped (no DATABASE_URL configured)");
+      console.log("ℹ️  [DB] Skipped (not configured)");
     }
 
-    res.json({ status: "ok", message: "Received & Saved" });
+    // 5. ESP32에 응답 (200 OK)
+    res.json({ status: "ok", message: "Data received" });
 
   } catch (err) {
-    console.error("❌ Error in POST /ems:", err);
+    console.error("❌ Error in POST /api/inverter/data:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
 /**
- * 📌 GET /api/v1/device/latest
- * (메모리 캐시 버전 - 아주 빠름)
- * 프론트엔드는 /api/v1/dashboard/latest를 사용하세요.
- * 이건 디바이스 측 확인용입니다.
+ * 📌 GET /api/inverter/latest
+ * 최신 인버터 데이터 조회 (메모리 캐시)
  */
 router.get("/latest", (req, res) => {
-  if (!latestEMSData) {
-    return res.json({ message: "No EMS data received yet" });
+  if (!latestInverterData) {
+    return res.json({ message: "No inverter data received yet" });
   }
-  res.json(latestEMSData);
+  res.json(latestInverterData);
 });
 
 export default router;

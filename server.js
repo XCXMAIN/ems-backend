@@ -21,8 +21,8 @@ wss.on("connection", (ws) => {
   ws.on("close", () => console.log("❌ WebSocket: Client disconnected"));
 });
 
-// 🟢 인버터 → 서버: 데이터 수신 API
-app.use("/api/v1/device", emsRouter);
+// 🟢 ESP32 게이트웨이 → 서버: 인버터 데이터 수신 API
+app.use("/api/inverter", emsRouter);
 
 // 🟢 프론트엔드 ← 서버: 대시보드 데이터 조회 API
 app.use("/api/v1/dashboard", dataRouter);
