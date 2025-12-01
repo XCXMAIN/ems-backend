@@ -12,7 +12,7 @@ let latestInverterData = null;
  * ESP32 게이트웨이 → 서버로 인버터 데이터 전송
  * 
  * 데이터 형식:
- * { "voltage": 400.0, "current": 12.5, "soc": 85, ... }
+ * { "type": "QPIGS", "ts_ms": ..., "metrics": { ... } }
  */
 router.post("/data", async (req, res) => {
   try {
@@ -21,33 +21,44 @@ router.post("/data", async (req, res) => {
     console.log("📩 [INVERTER DATA RECEIVED]");
     console.log(JSON.stringify(data, null, 2));
 
-    // 1. 데이터 파싱 (ESP32에서 보내는 형식)
+    // metrics 안에 실제 데이터가 있음
+    const m = data.metrics || data;
+
+    // 1. 데이터 파싱 (ESP32/인버터 실제 형식)
     const parsed = {
       timestamp: new Date().toISOString(),
       site: data.site_id || "site-001",
+      type: data.type,
+      ts_ms: data.ts_ms,
       
-      // 기본 전력 데이터
-      voltage: data.voltage,
-      current: data.current,
-      power: data.power || (data.voltage && data.current ? parseFloat((data.voltage * data.current).toFixed(2)) : null),
+      // 그리드 데이터
+      grid_voltage: m.grid_voltage,
+      grid_freq: m.grid_freq,
+      
+      // AC 출력 데이터
+      ac_out_voltage: m.ac_out_voltage,
+      ac_out_freq: m.ac_out_freq,
+      ac_out_va: m.ac_out_va,
+      ac_out_watt: m.ac_out_watt,
+      load_percent: m.load_percent,
       
       // 배터리 데이터
-      soc: data.soc,
-      battery_voltage: data.battery_voltage,
-      battery_temp: data.battery_temp,
-      charge_current: data.charge_current,
-      discharge_current: data.discharge_current,
+      soc: m.batt_capacity_percent,
+      battery_voltage: m.batt_voltage,
+      battery_temp: m.heatsink_temp,
+      charge_current: m.batt_charge_current,
+      discharge_current: m.batt_discharge_current,
+      bus_voltage: m.bus_voltage,
       
       // PV 데이터
-      pv_voltage: data.pv_voltage,
-      pv_current: data.pv_current,
-      pv_power: data.pv_power || (data.pv_voltage && data.pv_current ? parseFloat((data.pv_voltage * data.pv_current).toFixed(2)) : null),
+      pv_voltage: m.pv_input_voltage,
+      pv_current: m.pv_input_current,
+      pv_power: m.pv_input_voltage && m.pv_input_current 
+        ? parseFloat((m.pv_input_voltage * m.pv_input_current).toFixed(2)) 
+        : 0,
       
-      // 그리드/출력 데이터
-      grid_voltage: data.grid_voltage,
-      grid_freq: data.grid_freq,
-      ac_output_w: data.ac_output_w,
-      load_percent: data.load_percent
+      // 기타
+      device_status: m.device_status_bits
     };
 
     console.log("\n🟢 [Parsed Inverter Data]");
